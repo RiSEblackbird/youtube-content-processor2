@@ -5,16 +5,18 @@ import Image from "next/image";
 
 export default function Home() {
   const [videoUrl, setVideoUrl] = useState('');
-  const [transcript, setTranscript] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [transcript, setTranscript] = useState([]);
   const [error, setError] = useState('');
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setTranscript([]);
+    setIsLoading(true);
 
     try {
-      // URLからビデオIDを抽出
+      // URLからビデオIDを抽出または直接ビデオIDを使用
       const videoId = videoUrl.includes('youtube.com/watch?v=')
         ? videoUrl.split('v=')[1].split('&')[0]
         : videoUrl;
@@ -36,105 +38,125 @@ export default function Home() {
       setTranscript(data.transcript);
     } catch (err) {
       setError(err instanceof Error ? err.message : '予期せぬエラーが発生しました');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  // 文字起こしを表示形式に変換
+  const formatTranscript = (transcriptItems) => {
+    return transcriptItems.map((item, index) => {
+      // 時間をフォーマット（秒から分:秒に変換）
+      const formatTime = (seconds) => {
+        const minutes = Math.floor(seconds / 60);
+        const secs = Math.floor(seconds % 60);
+        return `${minutes}:${secs.toString().padStart(2, '0')}`;
+      };
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+      return (
+        <div key={index} className="p-3 border-b border-gray-200 hover:bg-gray-50">
+          <div className="flex items-start">
+            <span className="text-xs font-mono text-gray-500 w-12">
+              {formatTime(item.start)}
+            </span>
+            <p className="flex-1 text-sm">{item.text}</p>
+          </div>
         </div>
+      );
+    });
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <header className="bg-white shadow-sm">
+        <div className="max-w-5xl mx-auto px-4 py-6">
+          <h1 className="text-2xl font-bold text-gray-900">YouTube文字起こし取得アプリ</h1>
+        </div>
+      </header>
+
+      <main className="max-w-5xl mx-auto px-4 py-8">
+        <div className="bg-white shadow rounded-lg p-6 mb-8">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label htmlFor="videoUrl" className="block text-sm font-medium text-gray-700 mb-1">
+                YouTube URL または ビデオID
+              </label>
+              <div className="flex">
+                <input
+                  type="text"
+                  id="videoUrl"
+                  className="flex-1 rounded-l-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+                  placeholder="https://www.youtube.com/watch?v=xxxx または xxxx"
+                  value={videoUrl}
+                  onChange={(e) => setVideoUrl(e.target.value)}
+                  required
+                />
+                <button
+                  type="submit"
+                  disabled={isLoading || !videoUrl.trim()}
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-r-md disabled:opacity-50"
+                >
+                  {isLoading ? '取得中...' : '文字起こし取得'}
+                </button>
+              </div>
+              <p className="mt-1 text-xs text-gray-500">
+                URLまたはビデオIDを入力して、文字起こしを取得します
+              </p>
+            </div>
+          </form>
+        </div>
+
+        {error && (
+          <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-8 rounded shadow">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-red-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <p className="text-sm text-red-700">{error}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {transcript.length > 0 && (
+          <div className="bg-white shadow rounded-lg overflow-hidden">
+            <div className="p-4 bg-gray-50 border-b border-gray-200">
+              <h2 className="text-lg font-medium text-gray-900">文字起こし結果</h2>
+            </div>
+            <div className="divide-y divide-gray-200 max-h-[60vh] overflow-y-auto">
+              {formatTranscript(transcript)}
+            </div>
+          </div>
+        )}
+
+        {isLoading && (
+          <div className="flex justify-center my-8">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+          </div>
+        )}
+
+        {!isLoading && !error && transcript.length === 0 && (
+          <div className="bg-white shadow rounded-lg p-8 text-center">
+            <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+            </svg>
+            <h3 className="mt-2 text-sm font-medium text-gray-900">文字起こしを取得</h3>
+            <p className="mt-1 text-sm text-gray-500">
+              YouTubeのURLまたはビデオIDを入力して、文字起こしを取得してください
+            </p>
+          </div>
+        )}
       </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
+
+      <footer className="bg-white border-t border-gray-200 mt-12">
+        <div className="max-w-5xl mx-auto px-4 py-6">
+          <p className="text-center text-sm text-gray-500">
+            YouTube文字起こし取得アプリケーション
+          </p>
+        </div>
       </footer>
     </div>
   );
