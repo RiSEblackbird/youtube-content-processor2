@@ -49,10 +49,15 @@ class YouTubeTranscriptService:
     def extract_video_id(url_or_id: str) -> str:
         '''
         概要: URLまたはビデオIDからビデオIDを抽出 \n
-        用途: 完全なYouTube URLが提供された場合にビデオIDを取得する
+        用途: 完全なYouTube URLまたは短縮URLが提供された場合にビデオIDを取得する
         '''
-        if url_or_id.startswith(YOUTUBE_URL_PREFIX):
+        # youtu.be形式のURLに対応
+        if "youtu.be" in url_or_id:
+            return url_or_id.split("youtu.be/")[1].split("?")[0]
+        # 通常のYouTube URL
+        elif "youtube.com/watch" in url_or_id:
             return url_or_id.split("v=")[1].split("&")[0]
+        # すでにビデオIDの場合
         return url_or_id
 
     @staticmethod
