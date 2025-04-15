@@ -136,7 +136,7 @@ async def get_video_summary(request: TranscriptRequest):
         )
         
         # 要約ワークフローの作成と実行
-        initial_summarizer = create_initial_summarizer([])
+        initial_summarizer = create_initial_summarizer()
         result = initial_summarizer.invoke(initial_state)
         
         refinement_agent = create_refinement_agent()

@@ -10,7 +10,7 @@ class SummaryState(BaseModel):
     summary: str = ""
     needs_refinement: bool = True
 
-def create_initial_summarizer(text_chunks: List[str]) -> StateGraph:
+def create_initial_summarizer() -> StateGraph:
     """初期要約を生成するエージェント"""
     llm = ChatOpenAI(model="gpt-4.1-nano", temperature=0)
     
