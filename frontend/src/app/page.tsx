@@ -7,7 +7,10 @@ export default function Home() {
   const [videoUrl, setVideoUrl] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [transcript, setTranscript] = useState([]);
+  const [summary, setSummary] = useState('');
+  const [isSummarizing, setIsSummarizing] = useState(false);
   const [error, setError] = useState('');
+  const [isTranscriptExpanded, setIsTranscriptExpanded] = useState(true);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -40,6 +43,38 @@ export default function Home() {
       setError(err instanceof Error ? err.message : '予期せぬエラーが発生しました');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleSummarize = async () => {
+    setError('');
+    setIsSummarizing(true);
+
+    try {
+      const videoId = videoUrl.includes('youtube.com/watch?v=')
+        ? videoUrl.split('v=')[1].split('&')[0]
+        : videoUrl;
+
+      const response = await fetch('http://127.0.0.1:8000/summarize/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ video_id: videoId }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || '要約の生成に失敗しました');
+      }
+
+      const data = await response.json();
+      setSummary(data.summary);
+      setIsTranscriptExpanded(false); // 要約完了時に文字起こしを折りたたむ
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '予期せぬエラーが発生しました');
+    } finally {
+      setIsSummarizing(false);
     }
   };
 
@@ -122,12 +157,55 @@ export default function Home() {
         )}
 
         {transcript.length > 0 && (
-          <div className="bg-white shadow rounded-lg overflow-hidden">
-            <div className="p-4 bg-gray-50 border-b border-gray-200">
-              <h2 className="text-lg font-medium text-gray-900">文字起こし結果</h2>
-            </div>
-            <div className="divide-y divide-gray-200 max-h-[60vh] overflow-y-auto">
-              {formatTranscript(transcript)}
+          <div className="space-y-4">
+            {summary && (
+              <div className="bg-white shadow rounded-lg overflow-hidden">
+                <div className="p-4 bg-gray-50 border-b border-gray-200">
+                  <h2 className="text-lg font-medium text-gray-900">要約</h2>
+                </div>
+                <div className="p-4">
+                  <p className="text-gray-700 whitespace-pre-wrap">{summary}</p>
+                </div>
+              </div>
+            )}
+            <div className="bg-white shadow rounded-lg overflow-hidden">
+              <div className="p-4 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => setIsTranscriptExpanded(!isTranscriptExpanded)}
+                    className="text-gray-500 hover:text-gray-700"
+                  >
+                    <svg
+                      className={`h-5 w-5 transform transition-transform ${
+                        isTranscriptExpanded ? 'rotate-0' : '-rotate-90'
+                      }`}
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M19 9l-7 7-7-7"
+                      />
+                    </svg>
+                  </button>
+                  <h2 className="text-lg font-medium text-gray-900">文字起こし結果</h2>
+                </div>
+                <button
+                  onClick={handleSummarize}
+                  disabled={isSummarizing}
+                  className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded disabled:opacity-50"
+                >
+                  {isSummarizing ? '要約中...' : '文字起こし要約'}
+                </button>
+              </div>
+              {isTranscriptExpanded && (
+                <div className="divide-y divide-gray-200 max-h-[60vh] overflow-y-auto">
+                  {formatTranscript(transcript)}
+                </div>
+              )}
             </div>
           </div>
         )}

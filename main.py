@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from typing import List, Dict, Any
 from youtube_transcript_api import YouTubeTranscriptApi
 from youtube_transcript_api._errors import NoTranscriptAvailable, TranscriptsDisabled
+from agents.summarizer import create_initial_summarizer, create_refinement_agent, SummaryState
 
 # 定数定義
 API_TITLE = "YouTube 文字起こし API"
@@ -37,6 +38,11 @@ class TranscriptResponse(BaseModel):
     '''
     video_id: str
     transcript: List[Dict[str, Any]]
+
+
+class SummaryResponse(BaseModel):
+    video_id: str
+    summary: str
 
 
 class YouTubeTranscriptService:
@@ -113,6 +119,34 @@ async def get_video_transcript(request: TranscriptRequest):
     video_id = request.video_id
     transcript = YouTubeTranscriptService.get_transcript(video_id)
     return TranscriptResponse(video_id=video_id, transcript=transcript)
+
+
+@app.post("/summarize/", response_model=SummaryResponse)
+async def get_video_summary(request: TranscriptRequest):
+    """動画の文字起こしを要約するエンドポイント"""
+    try:
+        video_id = request.video_id
+        transcript = YouTubeTranscriptService.get_transcript(video_id)
+        
+        # 初期状態の作成
+        initial_state = SummaryState(
+            transcript=transcript,
+            summary="",
+            needs_refinement=True
+        )
+        
+        # 要約ワークフローの作成と実行
+        initial_summarizer = create_initial_summarizer()
+        result = initial_summarizer.invoke(initial_state)
+        
+        refinement_agent = create_refinement_agent()
+        final_result = refinement_agent.invoke(result)
+        
+        # 辞書形式でアクセス
+        return SummaryResponse(video_id=video_id, summary=final_result['summary'])
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"要約の生成中にエラーが発生しました: {str(e)}")
+
 
 # メインプロセス
 try:
