@@ -121,6 +121,6 @@ try:
 except Exception as e:
     error_trace = get_exception_trace()
     print("エラーが発生しました:")
-    for line in error_trace:
+    for line in error_trace.splitlines():
         print(line)
     sys.exit(1)
