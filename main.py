@@ -2,6 +2,7 @@ import sys
 import traceback
 import uvicorn
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Dict, Any
 from youtube_transcript_api import YouTubeTranscriptApi
@@ -48,10 +49,15 @@ class YouTubeTranscriptService:
     def extract_video_id(url_or_id: str) -> str:
         '''
         概要: URLまたはビデオIDからビデオIDを抽出 \n
-        用途: 完全なYouTube URLが提供された場合にビデオIDを取得する
+        用途: 完全なYouTube URLまたは短縮URLが提供された場合にビデオIDを取得する
         '''
-        if url_or_id.startswith(YOUTUBE_URL_PREFIX):
+        # youtu.be形式のURLに対応
+        if "youtu.be" in url_or_id:
+            return url_or_id.split("youtu.be/")[1].split("?")[0]
+        # 通常のYouTube URL
+        elif "youtube.com/watch" in url_or_id:
             return url_or_id.split("v=")[1].split("&")[0]
+        # すでにビデオIDの場合
         return url_or_id
 
     @staticmethod
@@ -77,6 +83,15 @@ app = FastAPI(
     title=API_TITLE,
     description=API_DESCRIPTION,
     version=API_VERSION,
+)
+
+# CORSミドルウェアの設定を追加
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
@@ -106,6 +121,6 @@ try:
 except Exception as e:
     error_trace = get_exception_trace()
     print("エラーが発生しました:")
-    for line in error_trace:
+    for line in error_trace.splitlines():
         print(line)
     sys.exit(1)
