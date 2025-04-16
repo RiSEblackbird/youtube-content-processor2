@@ -14,7 +14,8 @@ export default function Home() {
   // チャット関連の状態
   const [chatType, setChatType] = useState('transcript');
   const [chatMessage, setChatMessage] = useState('');
-  const [chatMessages, setChatMessages] = useState([]);
+  const [transcriptChatMessages, setTranscriptChatMessages] = useState([]);
+  const [summaryChatMessages, setSummaryChatMessages] = useState([]);
   const [isChatLoading, setIsChatLoading] = useState(false);
 
   const handleSubmit = async (e) => {
@@ -89,7 +90,11 @@ export default function Home() {
     if (!chatMessage.trim() || isChatLoading) return;
 
     const newMessage = { type: 'user', content: chatMessage };
-    setChatMessages(prev => [...prev, newMessage]);
+    if (chatType === 'transcript') {
+      setTranscriptChatMessages(prev => [...prev, newMessage]);
+    } else {
+      setSummaryChatMessages(prev => [...prev, newMessage]);
+    }
     setChatMessage('');
     setIsChatLoading(true);
 
@@ -116,7 +121,12 @@ export default function Home() {
       }
 
       const data = await response.json();
-      setChatMessages(prev => [...prev, { type: 'ai', content: data.response }]);
+      const aiMessage = { type: 'ai', content: data.response };
+      if (chatType === 'transcript') {
+        setTranscriptChatMessages(prev => [...prev, aiMessage]);
+      } else {
+        setSummaryChatMessages(prev => [...prev, aiMessage]);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : '予期せぬエラーが発生しました');
     } finally {
@@ -307,7 +317,7 @@ export default function Home() {
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {chatMessages.map((msg, index) => (
+            {(chatType === 'transcript' ? transcriptChatMessages : summaryChatMessages).map((msg, index) => (
               <div
                 key={index}
                 className={`flex ${
@@ -315,13 +325,18 @@ export default function Home() {
                 }`}
               >
                 <div
-                  className={`max-w-[80%] rounded-lg p-3 ${
+                  className={`max-w-[80%] rounded-lg p-3 relative ${
                     msg.type === 'user'
                       ? 'bg-blue-600 text-white'
                       : 'bg-gray-100 text-gray-900'
                   }`}
                 >
                   {msg.content}
+                  {msg.type === 'user' && (
+                    <span className="absolute -top-2 right-2 text-xs text-gray-500 bg-white px-1 rounded">
+                      {chatType === 'transcript' ? '文字起こし' : '要約'}
+                    </span>
+                  )}
                 </div>
               </div>
             ))}
