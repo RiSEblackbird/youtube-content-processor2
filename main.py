@@ -8,6 +8,8 @@ from typing import List, Dict, Any
 from youtube_transcript_api import YouTubeTranscriptApi
 from youtube_transcript_api._errors import NoTranscriptAvailable, TranscriptsDisabled
 from agents.summarizer import create_initial_summarizer, create_refinement_agent, SummaryState
+from langchain_openai import ChatOpenAI
+from langchain.prompts import ChatPromptTemplate
 
 # 定数定義
 API_TITLE = "YouTube 文字起こし API"
@@ -146,6 +148,36 @@ async def get_video_summary(request: TranscriptRequest):
         return SummaryResponse(video_id=video_id, summary=final_result['summary'])
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"要約の生成中にエラーが発生しました: {str(e)}")
+
+
+@app.post("/chat/", response_model=Dict[str, str])
+async def process_chat(request: Dict[str, Any]):
+    """チャットメッセージを処理するエンドポイント"""
+    try:
+        content = request.get("content", "")
+        chat_type = request.get("type", "transcript")
+        content_text = request.get("contentText", "")
+        
+        if not content or not content_text:
+            raise ValueError("必要なパラメータが不足しています")
+
+        llm = ChatOpenAI(model="gpt-4.1-nano", temperature=0)
+        
+        system_message = "文字起こし" if chat_type == "transcript" else "要約"
+        prompt = ChatPromptTemplate.from_messages([
+            ("system", f"あなたは{system_message}の内容について質問に答える専門家です。"),
+            ("user", f"以下の{system_message}の内容に関する質問に答えてください:\n\n{content_text}\n\n質問: {content}")
+        ])
+        
+        formatted_prompt = prompt.format_messages()
+        response = llm.invoke(formatted_prompt)
+        return {"response": response.content}
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as e:
+        error_trace = traceback.format_exc()
+        print(f"チャット処理中にエラーが発生: {error_trace}", file=sys.stderr)
+        raise HTTPException(status_code=500, detail=f"チャット処理中にエラーが発生しました: {str(e)}")
 
 
 # メインプロセス
