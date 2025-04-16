@@ -19,8 +19,9 @@ export default function Home() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
     setTranscript([]);
+    setSummary(''); // 要約をリセット
+    setError('');
     setIsLoading(true);
 
     try {
