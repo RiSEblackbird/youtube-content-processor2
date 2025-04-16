@@ -348,7 +348,7 @@ export default function Home() {
                     ? "メッセージを入力..."
                     : "文字起こしまたは要約を取得してください"
                 }
-                className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 disabled:opacity-50"
+                className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 disabled:opacity-50 text-black"
                 onKeyPress={(e) => {
                   if (e.key === 'Enter') {
                     handleSendMessage();
