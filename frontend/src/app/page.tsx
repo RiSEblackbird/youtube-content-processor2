@@ -177,7 +177,7 @@ export default function Home() {
                   <input
                     type="text"
                     id="videoUrl"
-                    className="flex-1 rounded-l-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+                    className="flex-1 rounded-l-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border text-black"
                     placeholder="https://www.youtube.com/watch?v=xxxx または xxxx"
                     value={videoUrl}
                     onChange={(e) => setVideoUrl(e.target.value)}
