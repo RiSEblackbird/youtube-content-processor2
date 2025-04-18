@@ -139,10 +139,7 @@ async def get_video_summary(request: TranscriptRequest):
         
         # 要約ワークフローの作成と実行
         initial_summarizer = create_initial_summarizer()
-        result = initial_summarizer.invoke(initial_state)
-        
-        refinement_agent = create_refinement_agent()
-        final_result = refinement_agent.invoke(result)
+        final_result = initial_summarizer.invoke(initial_state)
         
         # 辞書形式でアクセス
         return SummaryResponse(video_id=video_id, summary=final_result['summary'])
