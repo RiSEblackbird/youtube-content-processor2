@@ -220,10 +220,16 @@ export default function Home() {
             </div>
           )}
 
+          {/* 動画タイトル部分 */}
           {videoTitle && (
-            <div className="bg-white shadow rounded-lg p-6 mb-8">
-              <h2 className="text-xl font-semibold mb-4 text-black">{videoTitle}</h2>
-              <div className="relative">
+            <div className="bg-white shadow rounded-lg overflow-hidden mb-8">
+              <div className="p-4 bg-gray-50 border-b border-gray-200">
+                <h2 className="text-lg font-medium text-gray-900">動画タイトル</h2>
+              </div>
+              <div className="p-4 text-black">
+                <p>{videoTitle}</p>
+              </div>
+              <div className="relative p-4 border-t border-gray-200">
                 <button
                   onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
                   className="text-blue-600 hover:text-blue-800 mb-2 flex items-center"
@@ -246,9 +252,9 @@ export default function Home() {
                   </svg>
                 </button>
                 {isDescriptionExpanded && (
-                  <div className="mt-2 text-gray-600 whitespace-pre-wrap">
+                  <p className="mt-2 text-gray-600 whitespace-pre-wrap">
                     {videoDescription}
-                  </div>
+                  </p>
                 )}
               </div>
             </div>
@@ -266,6 +272,7 @@ export default function Home() {
                   </div>
                 </div>
               )}
+              {/* 文字起こし部分 */}
               <div className="bg-white shadow rounded-lg overflow-hidden">
                 <div className="p-4 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
                   <div className="flex items-center space-x-2">
