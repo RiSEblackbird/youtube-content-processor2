@@ -14,6 +14,8 @@ export default function Home() {
   const [videoTitle, setVideoTitle] = useState('');
   const [videoDescription, setVideoDescription] = useState('');
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
+  const [channelTitle, setChannelTitle] = useState('');
+  const [channelUrl, setChannelUrl] = useState('');
   // チャット関連の状態
   const [chatType, setChatType] = useState('transcript');
   const [chatMessage, setChatMessage] = useState('');
@@ -53,6 +55,8 @@ export default function Home() {
       setTranscript(data.transcript);
       setVideoTitle(data.title);
       setVideoDescription(data.description);
+      setChannelTitle(data.channelTitle);
+      setChannelUrl(data.channelId);
     } catch (err) {
       setError(err instanceof Error ? err.message : '予期せぬエラーが発生しました');
     } finally {
@@ -228,6 +232,16 @@ export default function Home() {
               </div>
               <div className="p-4 text-black">
                 <p>{videoTitle}</p>
+                {channelTitle && (
+                  <a
+                    href={`https://www.youtube.com/channel/${channelUrl}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-blue-600 hover:text-blue-800 mt-2 inline-block"
+                  >
+                    {channelTitle}
+                  </a>
+                )}
               </div>
               <div className="relative p-4 border-t border-gray-200">
                 <button

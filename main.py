@@ -49,6 +49,8 @@ class TranscriptResponse(BaseModel):
     transcript: List[Dict[str, Any]]
     title: str = ""
     description: str = ""
+    channelTitle: str = ""
+    channelId: str = ""
 
 
 class SummaryResponse(BaseModel):
@@ -105,7 +107,7 @@ class YouTubeTranscriptService:
             
             if not os.getenv('YouTube_API_KEY'):
                 print("YouTube APIキーが設定されていません")
-                return {"title": "", "description": ""}
+                return {"title": "", "description": "", "channelTitle": "", "channelId": ""}
 
             youtube = build('youtube', 'v3', developerKey=os.getenv('YouTube_API_KEY'))
             request = youtube.videos().list(
@@ -116,24 +118,26 @@ class YouTubeTranscriptService:
 
             if not response.get('items'):
                 print(f"ビデオが見つかりません: {video_id}")
-                return {"title": "", "description": ""}
+                return {"title": "", "description": "", "channelTitle": "", "channelId": ""}
 
             snippet = response['items'][0]['snippet']
             return {
                 "title": snippet['title'],
-                "description": snippet['description']
+                "description": snippet['description'],
+                "channelTitle": snippet['channelTitle'],
+                "channelId": snippet['channelId']
             }
         except HttpError as e:
             error_message = "YouTube APIエラー: "
             if e.status_code == 403:
-                error_message += "APIキーの権限が不足しています。Google Cloud ConsoleでYouTube Data API v3へのアクセスを有効にしてください。"
+                error_message += "APIキーの権限が不足しています。"
             else:
                 error_message += f"{e.reason}"
             print(error_message)
-            return {"title": "", "description": ""}
+            return {"title": "", "description": "", "channelTitle": "", "channelId": ""}
         except Exception as e:
             print(f"ビデオ情報の取得中にエラーが発生しました: {str(e)}")
-            return {"title": "", "description": ""}
+            return {"title": "", "description": "", "channelTitle": "", "channelId": ""}
 
 
 # FastAPIインスタンスの作成
@@ -175,7 +179,9 @@ async def get_video_transcript(request: TranscriptRequest):
         video_id=video_id,
         transcript=transcript,
         title=video_info["title"],
-        description=video_info["description"]
+        description=video_info["description"],
+        channelTitle=video_info["channelTitle"],
+        channelId=video_info["channelId"]
     )
 
 
