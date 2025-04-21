@@ -71,6 +71,9 @@ npm run dev
   - langchain-openai
   - pydantic
   - python-dotenv
+- 環境変数:
+  - OPENAI_API_KEY: OpenAI APIキー
+  - YouTube_API_KEY: YouTube Data API v3のAPIキー
 
 ### フロントエンド
 
@@ -110,7 +113,11 @@ npm run dev
       "start": 0.0,
       "duration": 2.5
     }
-  ]
+  ],
+  "title": "動画タイトル",
+  "description": "動画の説明",
+  "channelTitle": "チャンネル名",
+  "channelId": "チャンネルID"
 }
 ```
 
