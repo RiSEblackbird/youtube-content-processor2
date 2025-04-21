@@ -11,6 +11,11 @@ export default function Home() {
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [error, setError] = useState('');
   const [isTranscriptExpanded, setIsTranscriptExpanded] = useState(true);
+  const [videoTitle, setVideoTitle] = useState('');
+  const [videoDescription, setVideoDescription] = useState('');
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
+  const [channelTitle, setChannelTitle] = useState('');
+  const [channelUrl, setChannelUrl] = useState('');
   // チャット関連の状態
   const [chatType, setChatType] = useState('transcript');
   const [chatMessage, setChatMessage] = useState('');
@@ -23,6 +28,8 @@ export default function Home() {
     setTranscript([]);
     setSummary(''); // 要約をリセット
     setError('');
+    setVideoTitle('');
+    setVideoDescription('');
     setIsLoading(true);
 
     try {
@@ -46,6 +53,10 @@ export default function Home() {
 
       const data = await response.json();
       setTranscript(data.transcript);
+      setVideoTitle(data.title);
+      setVideoDescription(data.description);
+      setChannelTitle(data.channelTitle);
+      setChannelUrl(data.channelId);
     } catch (err) {
       setError(err instanceof Error ? err.message : '予期せぬエラーが発生しました');
     } finally {
@@ -213,6 +224,56 @@ export default function Home() {
             </div>
           )}
 
+          {/* 動画タイトル部分 */}
+          {videoTitle && (
+            <div className="bg-white shadow rounded-lg overflow-hidden mb-8">
+              <div className="p-4 bg-gray-50 border-b border-gray-200">
+                <h2 className="text-lg font-medium text-gray-900">動画タイトル</h2>
+              </div>
+              <div className="p-4 text-black">
+                <p>{videoTitle}</p>
+                {channelTitle && (
+                  <a
+                    href={`https://www.youtube.com/channel/${channelUrl}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-blue-600 hover:text-blue-800 mt-2 inline-block"
+                  >
+                    {channelTitle}
+                  </a>
+                )}
+              </div>
+              <div className="relative p-4 border-t border-gray-200">
+                <button
+                  onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
+                  className="text-blue-600 hover:text-blue-800 mb-2 flex items-center"
+                >
+                  <span className="mr-2">動画の説明</span>
+                  <svg
+                    className={`h-5 w-5 transform transition-transform ${
+                      isDescriptionExpanded ? 'rotate-180' : ''
+                    }`}
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                </button>
+                {isDescriptionExpanded && (
+                  <p className="mt-2 text-gray-600 whitespace-pre-wrap">
+                    {videoDescription}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
           {transcript.length > 0 && (
             <div className="space-y-4">
               {summary && (
@@ -225,6 +286,7 @@ export default function Home() {
                   </div>
                 </div>
               )}
+              {/* 文字起こし部分 */}
               <div className="bg-white shadow rounded-lg overflow-hidden">
                 <div className="p-4 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
                   <div className="flex items-center space-x-2">

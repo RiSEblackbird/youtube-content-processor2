@@ -7,9 +7,16 @@ from pydantic import BaseModel
 from typing import List, Dict, Any
 from youtube_transcript_api import YouTubeTranscriptApi
 from youtube_transcript_api._errors import NoTranscriptAvailable, TranscriptsDisabled
-from agents.summarizer import create_initial_summarizer, create_refinement_agent, SummaryState
+from agents.summarizer import create_initial_summarizer, SummaryState
 from langchain_openai import ChatOpenAI
 from langchain.prompts import ChatPromptTemplate
+import os
+from dotenv import load_dotenv
+from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
+
+# .envファイルの読み込み
+load_dotenv()
 
 # 定数定義
 API_TITLE = "YouTube 文字起こし API"
@@ -40,6 +47,10 @@ class TranscriptResponse(BaseModel):
     '''
     video_id: str
     transcript: List[Dict[str, Any]]
+    title: str = ""
+    description: str = ""
+    channelTitle: str = ""
+    channelId: str = ""
 
 
 class SummaryResponse(BaseModel):
@@ -85,6 +96,49 @@ class YouTubeTranscriptService:
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"文字起こしの取得中にエラーが発生しました: {str(e)}")
 
+    @staticmethod
+    def get_video_info(video_id: str) -> Dict[str, str]:
+        '''
+        概要: YouTube動画の情報を取得 \n
+        用途: 指定されたビデオIDのタイトルと説明を取得する
+        '''
+        try:
+            video_id = YouTubeTranscriptService.extract_video_id(video_id)
+            
+            if not os.getenv('YouTube_API_KEY'):
+                print("YouTube APIキーが設定されていません")
+                return {"title": "", "description": "", "channelTitle": "", "channelId": ""}
+
+            youtube = build('youtube', 'v3', developerKey=os.getenv('YouTube_API_KEY'))
+            request = youtube.videos().list(
+                part='snippet',
+                id=video_id
+            )
+            response = request.execute()
+
+            if not response.get('items'):
+                print(f"ビデオが見つかりません: {video_id}")
+                return {"title": "", "description": "", "channelTitle": "", "channelId": ""}
+
+            snippet = response['items'][0]['snippet']
+            return {
+                "title": snippet['title'],
+                "description": snippet['description'],
+                "channelTitle": snippet['channelTitle'],
+                "channelId": snippet['channelId']
+            }
+        except HttpError as e:
+            error_message = "YouTube APIエラー: "
+            if e.status_code == 403:
+                error_message += "APIキーの権限が不足しています。"
+            else:
+                error_message += f"{e.reason}"
+            print(error_message)
+            return {"title": "", "description": "", "channelTitle": "", "channelId": ""}
+        except Exception as e:
+            print(f"ビデオ情報の取得中にエラーが発生しました: {str(e)}")
+            return {"title": "", "description": "", "channelTitle": "", "channelId": ""}
+
 
 # FastAPIインスタンスの作成
 app = FastAPI(
@@ -120,7 +174,15 @@ async def get_video_transcript(request: TranscriptRequest):
     '''
     video_id = request.video_id
     transcript = YouTubeTranscriptService.get_transcript(video_id)
-    return TranscriptResponse(video_id=video_id, transcript=transcript)
+    video_info = YouTubeTranscriptService.get_video_info(video_id)
+    return TranscriptResponse(
+        video_id=video_id,
+        transcript=transcript,
+        title=video_info["title"],
+        description=video_info["description"],
+        channelTitle=video_info["channelTitle"],
+        channelId=video_info["channelId"]
+    )
 
 
 @app.post("/summarize/", response_model=SummaryResponse)
