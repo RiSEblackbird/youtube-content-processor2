@@ -1,6 +1,7 @@
 import sys
 import traceback
 import uvicorn
+import json
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -203,10 +204,26 @@ async def get_video_summary(request: TranscriptRequest):
         initial_summarizer = create_initial_summarizer()
         final_result = initial_summarizer.invoke(initial_state)
         
-        # 辞書形式でアクセス
-        return SummaryResponse(video_id=video_id, summary=final_result['summary'])
+        # (今後も残す)
+        # # デバッグ用：JSONパース前の生データを確認
+        # print("=== 要約生成結果（生データ） ===")
+        # print(final_result['summary'])
+        # print("===============================")
+        
+        try:
+            # JSONとして解析可能か確認
+            json.loads(final_result['summary'])
+            return SummaryResponse(video_id=video_id, summary=final_result['summary'])
+        except json.JSONDecodeError as je:
+            raise HTTPException(
+                status_code=500, 
+                detail=f"要約のJSON解析に失敗しました。エラー位置: {je.pos}, 原因: {je.msg}\n生データ: {final_result['summary'][:200]}..."
+            )
+            
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"要約の生成中にエラーが発生しました: {str(e)}")
+        error_trace = traceback.format_exc()
+        print(f"要約生成エラー: {str(e)}\nトレース:\n{error_trace}", file=sys.stderr)
+        raise HTTPException(status_code=500, detail=f"要約の生成中にエラーが発生しました: {str(e)}\n\n詳細:\n{error_trace}")
 
 
 @app.post("/chat/", response_model=Dict[str, str])

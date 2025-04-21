@@ -277,12 +277,73 @@ export default function Home() {
           {transcript.length > 0 && (
             <div className="space-y-4">
               {summary && (
-                <div className="bg-white shadow rounded-lg overflow-hidden">
-                  <div className="p-4 bg-gray-50 border-b border-gray-200">
-                    <h2 className="text-lg font-medium text-gray-900">要約</h2>
+                <div className="space-y-4">
+                  <div className="bg-white shadow overflow-hidden sm:rounded-lg p-4 my-4">
+                    <div className="flex justify-between items-start">
+                      <h2 className="text-lg font-medium text-gray-900">要約結果</h2>
+                    </div>
+                    <div className="mt-4 space-y-4">
+                      {(() => {
+                        try {
+                          const summaryData = JSON.parse(summary);
+                          return (
+                            <>
+                              <div>
+                                <h3 className="text-md font-medium">サブタイトル</h3>
+                                <p className="text-gray-600">{summaryData.sub_title}</p>
+                              </div>
+                              <div>
+                                <h3 className="text-md font-medium">概要</h3>
+                                <p className="text-gray-600 whitespace-pre-wrap">{summaryData.overview}</p>
+                              </div>
+                              <div>
+                                <h3 className="text-md font-medium">主要トピック</h3>
+                                <ul className="list-disc list-inside text-gray-600">
+                                  {summaryData.main_topics.map((topic, index) => (
+                                    <li key={index}>{topic}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                              <div>
+                                <h3 className="text-md font-medium">重要ポイント</h3>
+                                <div className="space-y-2">
+                                  {summaryData.key_points.map((point, index) => (
+                                    <div key={index}>
+                                      <p className="font-medium text-gray-700">{point.title}</p>
+                                      <p className="text-gray-600">{point.description}</p>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                              <div>
+                                <h3 className="text-md font-medium">キーワード</h3>
+                                <p className="text-gray-600">{summaryData.keywords.join(', ')}</p>
+                              </div>
+                              <div>
+                                <h3 className="text-md font-medium">アクションアイテム</h3>
+                                <ul className="list-disc list-inside text-gray-600">
+                                  {summaryData.action_items.map((item, index) => (
+                                    <li key={index}>{item}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            </>
+                          );
+                        } catch (e) {
+                          return <p className="text-red-500">要約データの解析に失敗しました。</p>;
+                        }
+                      })()}
+                    </div>
                   </div>
-                  <div className="p-4">
-                    <p className="text-gray-700 whitespace-pre-wrap">{summary}</p>
+
+                  {/* JSON生データ表示セクション */}
+                  <div className="bg-white shadow overflow-hidden sm:rounded-lg p-4">
+                    <div className="flex justify-between items-start mb-4">
+                      <h2 className="text-lg font-medium text-gray-900">要約生データ（JSON）</h2>
+                    </div>
+                    <pre className="bg-gray-50 p-4 rounded-lg overflow-x-auto text-sm font-mono text-gray-700">
+                      {JSON.stringify(JSON.parse(summary), null, 2)}
+                    </pre>
                   </div>
                 </div>
               )}
