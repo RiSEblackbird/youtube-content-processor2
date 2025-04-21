@@ -11,6 +11,9 @@ export default function Home() {
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [error, setError] = useState('');
   const [isTranscriptExpanded, setIsTranscriptExpanded] = useState(true);
+  const [videoTitle, setVideoTitle] = useState('');
+  const [videoDescription, setVideoDescription] = useState('');
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
   // チャット関連の状態
   const [chatType, setChatType] = useState('transcript');
   const [chatMessage, setChatMessage] = useState('');
@@ -23,6 +26,8 @@ export default function Home() {
     setTranscript([]);
     setSummary(''); // 要約をリセット
     setError('');
+    setVideoTitle('');
+    setVideoDescription('');
     setIsLoading(true);
 
     try {
@@ -46,6 +51,8 @@ export default function Home() {
 
       const data = await response.json();
       setTranscript(data.transcript);
+      setVideoTitle(data.title);
+      setVideoDescription(data.description);
     } catch (err) {
       setError(err instanceof Error ? err.message : '予期せぬエラーが発生しました');
     } finally {
@@ -209,6 +216,40 @@ export default function Home() {
                 <div className="ml-3">
                   <p className="text-sm text-red-700">{error}</p>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {videoTitle && (
+            <div className="bg-white shadow rounded-lg p-6 mb-8">
+              <h2 className="text-xl font-semibold mb-4 text-black">{videoTitle}</h2>
+              <div className="relative">
+                <button
+                  onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
+                  className="text-blue-600 hover:text-blue-800 mb-2 flex items-center"
+                >
+                  <span className="mr-2">動画の説明</span>
+                  <svg
+                    className={`h-5 w-5 transform transition-transform ${
+                      isDescriptionExpanded ? 'rotate-180' : ''
+                    }`}
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                </button>
+                {isDescriptionExpanded && (
+                  <div className="mt-2 text-gray-600 whitespace-pre-wrap">
+                    {videoDescription}
+                  </div>
+                )}
               </div>
             </div>
           )}
