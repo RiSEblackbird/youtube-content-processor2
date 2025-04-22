@@ -2,10 +2,12 @@ import sys
 import traceback
 import uvicorn
 import json
+import uuid
+from datetime import datetime
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from youtube_transcript_api import YouTubeTranscriptApi
 from youtube_transcript_api._errors import NoTranscriptAvailable, TranscriptsDisabled
 from agents.summarizer import create_initial_summarizer, SummaryState
@@ -15,6 +17,8 @@ import os
 from dotenv import load_dotenv
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
+from google.cloud import storage
+from google.api_core import exceptions as google_exceptions
 
 # .envファイルの読み込み
 load_dotenv()
@@ -27,6 +31,9 @@ DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8000
 YOUTUBE_URL_PREFIX = "https://www.youtube.com/watch?v="
 
+# GCS設定
+GCS_BUCKET_NAME = os.getenv('GCS_BUCKET_NAME')
+GCS_SUMMARY_PREFIX = "summaries/"  # GCSのフォルダプレフィックス
 
 def get_exception_trace() -> str:
     '''例外のトレースバックを取得'''
@@ -57,6 +64,80 @@ class TranscriptResponse(BaseModel):
 class SummaryResponse(BaseModel):
     video_id: str
     summary: str
+    gcs_path: Optional[str] = None
+
+
+class GoogleCloudStorageService:
+    '''
+    概要: Google Cloud Storageとの連携を行うサービス \n
+    用途: データをGCSに保存する
+    '''
+    
+    @staticmethod
+    def initialize_client():
+        '''GCSクライアントの初期化'''
+        try:
+            # 環境変数GOOGLE_APPLICATION_CREDENTIALSで認証情報が設定されていることを前提
+            return storage.Client()
+        except Exception as e:
+            print(f"GCSクライアントの初期化に失敗しました: {str(e)}")
+            return None
+
+    @staticmethod
+    def save_summary_to_gcs(video_id: str, summary_data: dict, video_info: dict) -> Optional[str]:
+        '''
+        概要: 要約データをGCSに保存する \n
+        用途: 生成された要約データとビデオ情報をJSONとしてGCSに保存
+        '''
+        if not GCS_BUCKET_NAME:
+            print("GCS_BUCKET_NAMEが設定されていません。GCSへの保存をスキップします。")
+            return None
+        
+        try:
+            client = GoogleCloudStorageService.initialize_client()
+            if not client:
+                return None
+                
+            bucket = client.bucket(GCS_BUCKET_NAME)
+            
+            # 現在時刻とUUIDでユニークなファイル名を生成
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            unique_id = str(uuid.uuid4())[:8]
+            filename = f"{GCS_SUMMARY_PREFIX}{video_id}_{timestamp}_{unique_id}.json"
+            
+            # 保存するデータの作成
+            storage_data = {
+                "video_id": video_id,
+                "video_title": video_info.get("title", ""),
+                "video_description": video_info.get("description", ""),
+                "channel_title": video_info.get("channelTitle", ""),
+                "channel_id": video_info.get("channelId", ""),
+                "summary_data": summary_data,
+                "timestamp": datetime.now().isoformat(),
+            }
+            
+            # JSONデータの作成
+            json_data = json.dumps(storage_data, ensure_ascii=False, indent=2)
+            
+            try:
+                # GCSにアップロード
+                blob = bucket.blob(filename)
+                blob.upload_from_string(json_data, content_type="application/json")
+                
+                # 公開URLを返す（バケットが公開設定の場合）
+                gcs_path = f"gs://{GCS_BUCKET_NAME}/{filename}"
+                print(f"要約データを保存しました: {gcs_path}")
+                return gcs_path
+            
+            except google_exceptions.Forbidden as e:
+                error_message = "GCSへのアクセスが拒否されました。サービスアカウントに適切な権限が付与されていない可能性があります。"
+                print(f"{error_message}\nエラー詳細: {str(e)}")
+                return None
+                
+        except Exception as e:
+            error_trace = traceback.format_exc()
+            print(f"GCSへの保存中にエラーが発生しました: {str(e)}\n{error_trace}")
+            return None
 
 
 class YouTubeTranscriptService:
@@ -192,6 +273,7 @@ async def get_video_summary(request: TranscriptRequest):
     try:
         video_id = request.video_id
         transcript = YouTubeTranscriptService.get_transcript(video_id)
+        video_info = YouTubeTranscriptService.get_video_info(video_id)
         
         # 初期状態の作成
         initial_state = SummaryState(
@@ -204,7 +286,6 @@ async def get_video_summary(request: TranscriptRequest):
         initial_summarizer = create_initial_summarizer()
         final_result = initial_summarizer.invoke(initial_state)
         
-        # (今後も残す)
         # # デバッグ用：JSONパース前の生データを確認
         # print("=== 要約生成結果（生データ） ===")
         # print(final_result['summary'])
@@ -212,8 +293,20 @@ async def get_video_summary(request: TranscriptRequest):
         
         try:
             # JSONとして解析可能か確認
-            json.loads(final_result['summary'])
-            return SummaryResponse(video_id=video_id, summary=final_result['summary'])
+            summary_json = json.loads(final_result['summary'])
+            
+            # GCSに保存
+            gcs_path = GoogleCloudStorageService.save_summary_to_gcs(
+                video_id=video_id,
+                summary_data=summary_json,
+                video_info=video_info
+            )
+            
+            return SummaryResponse(
+                video_id=video_id, 
+                summary=final_result['summary'],
+                gcs_path=gcs_path
+            )
         except json.JSONDecodeError as je:
             raise HTTPException(
                 status_code=500, 
@@ -257,12 +350,13 @@ async def process_chat(request: Dict[str, Any]):
 
 
 # メインプロセス
-try:
-    # APIサーバーを起動
-    uvicorn.run(app, host=DEFAULT_HOST, port=DEFAULT_PORT)
-except Exception as e:
-    error_trace = get_exception_trace()
-    print("エラーが発生しました:")
-    for line in error_trace.splitlines():
-        print(line)
-    sys.exit(1)
+if __name__ == "__main__":
+    try:
+        # APIサーバーを起動
+        uvicorn.run(app, host=DEFAULT_HOST, port=DEFAULT_PORT)
+    except Exception as e:
+        error_trace = get_exception_trace()
+        print("エラーが発生しました:")
+        for line in error_trace.splitlines():
+            print(line)
+        sys.exit(1)
