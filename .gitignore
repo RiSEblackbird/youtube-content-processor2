@@ -1,5 +1,6 @@
 /.mypy_cache
 /test.py
 /agents/__pycache__
-
+/credentials
+/docs
 .env
