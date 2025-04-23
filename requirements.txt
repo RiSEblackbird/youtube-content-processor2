@@ -10,3 +10,7 @@ google-api-python-client>=2.0.0
 google-cloud-storage>=3.0.0
 python-dotenv>=1.0.0
 tiktoken>=0.9.0
+# Cloud SQL対応のために追加
+sqlalchemy>=2.0.0
+pg8000>=1.30.0  # PostgreSQL用ドライバー（Cloud SQLでPostgreSQLを使用する場合）
+pymysql>=1.1.0  # MySQL用ドライバー（Cloud SQLでMySQLを使用する場合）

@@ -41,6 +41,21 @@ npm install
 npm run dev
 ```
 
+### Cloud SQL接続
+
+1. Cloud SQL Proxyのインストール
+2. Cloud SQL Admin APIの有効化
+   - GCPコンソールで有効化: https://console.developers.google.com/apis/api/sqladmin.googleapis.com/overview?project=youtube-content-processor2
+3. ローカルMySQLサーバーが実行中の場合は停止（ポート3306が使用中の場合）
+   - 実行中のプロセス確認: `netstat -ano | findstr :3306`
+   - プロセスID確認: `tasklist | findstr <PID>`
+   - サービス停止: `taskkill /F /PID <PID>` または services.mscから停止
+4. Cloud SQL Proxyの実行
+   ```bash
+   cloud-sql-proxy youtube-content-processor2:asia-northeast1:youtube-content-processor2 --port=3306
+   ```
+   - 実行中はコマンドプロンプトを閉じないでください
+
 ## 使い方
 
 1. バックエンド(http://localhost:8000)とフロントエンド(http://localhost:3000)を起動
