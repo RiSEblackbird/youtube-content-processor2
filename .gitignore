@@ -3,4 +3,5 @@
 /agents/__pycache__
 /credentials
 /docs
+/database/__pycache__
 .env

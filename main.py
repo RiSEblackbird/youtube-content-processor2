@@ -19,6 +19,8 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from google.cloud import storage
 from google.api_core import exceptions as google_exceptions
+from database.db_models import create_tables
+from database.db_service import DatabaseService
 
 # .envファイルの読み込み
 load_dotenv()
@@ -229,6 +231,9 @@ app = FastAPI(
     version=API_VERSION,
 )
 
+# アプリケーション起動時にテーブルを作成
+create_tables()
+
 # CORSミドルウェアの設定を追加
 app.add_middleware(
     CORSMiddleware,
@@ -275,6 +280,16 @@ async def get_video_summary(request: TranscriptRequest):
         transcript = YouTubeTranscriptService.get_transcript(video_id)
         video_info = YouTubeTranscriptService.get_video_info(video_id)
         
+        # 既存の要約データをDBから検索（キャッシュとして使用）
+        existing_summary = DatabaseService.get_summary_by_video_id(video_id)
+        if existing_summary:
+            print(f"既存の要約データを使用: video_id={video_id}")
+            return SummaryResponse(
+                video_id=video_id, 
+                summary=json.dumps(existing_summary.summary_data),
+                gcs_path=existing_summary.gcs_path
+            )
+        
         # 初期状態の作成
         initial_state = SummaryState(
             transcript=transcript,
@@ -286,11 +301,6 @@ async def get_video_summary(request: TranscriptRequest):
         initial_summarizer = create_initial_summarizer()
         final_result = initial_summarizer.invoke(initial_state)
         
-        # # デバッグ用：JSONパース前の生データを確認
-        # print("=== 要約生成結果（生データ） ===")
-        # print(final_result['summary'])
-        # print("===============================")
-        
         try:
             # JSONとして解析可能か確認
             summary_json = json.loads(final_result['summary'])
@@ -301,6 +311,17 @@ async def get_video_summary(request: TranscriptRequest):
                 summary_data=summary_json,
                 video_info=video_info
             )
+            
+            # データベースに保存
+            db_id = DatabaseService.save_summary_to_db(
+                video_id=video_id,
+                summary_data=summary_json,
+                video_info=video_info,
+                gcs_path=gcs_path
+            )
+            
+            if db_id:
+                print(f"要約データをデータベースに保存しました: ID={db_id}")
             
             return SummaryResponse(
                 video_id=video_id, 
