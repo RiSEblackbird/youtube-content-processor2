@@ -16,14 +16,10 @@ DB_HOST = os.getenv("DB_HOST")
 DB_PORT = os.getenv("DB_PORT", "3306")  # MySQLのデフォルトポート
 INSTANCE_CONNECTION_NAME = os.getenv("INSTANCE_CONNECTION_NAME")
 
-# 本番環境ではCloud SQL Proxy経由で接続
-if os.getenv("GAE_ENV", "").startswith("standard"):
-    # App Engineの場合、Unix socketを使用
+if os.getenv("GAE_ENV", "").startswith("standard") or os.getenv("K_SERVICE"):  # K_SERVICEはCloud Run環境で設定される
+    # App EngineまたはCloud Runの場合、Unix socketを使用
     db_socket_dir = os.getenv("DB_SOCKET_DIR", "/cloudsql")
     cloud_sql_connection_name = INSTANCE_CONNECTION_NAME
-    pool_recycle = 90  # 90秒ごとに接続をリサイクル
-    pool_timeout = 30  # 接続プールからの取得タイムアウト
-    max_overflow = 10  # コネクションプールの最大オーバーフロー数
     
     db_url = f"mysql+pymysql://{DB_USER}:{DB_PASS}@/{DB_NAME}?unix_socket={db_socket_dir}/{cloud_sql_connection_name}"
 else:
