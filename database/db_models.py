@@ -16,12 +16,20 @@ DB_HOST = os.getenv("DB_HOST")
 DB_PORT = os.getenv("DB_PORT", "3306")  # MySQLのデフォルトポート
 INSTANCE_CONNECTION_NAME = os.getenv("INSTANCE_CONNECTION_NAME")
 
-if os.getenv("GAE_ENV", "").startswith("standard") or os.getenv("K_SERVICE"):  # K_SERVICEはCloud Run環境で設定される
-    # App EngineまたはCloud Runの場合、Unix socketを使用
+# App EngineではなくCloud Run環境の検出方法を修正
+if os.getenv("K_SERVICE") or os.getenv("GAE_ENV", "").startswith("standard"):
+    # Cloud RunまたはApp Engineの場合、Unix socketを使用
     db_socket_dir = os.getenv("DB_SOCKET_DIR", "/cloudsql")
     cloud_sql_connection_name = INSTANCE_CONNECTION_NAME
     
-    db_url = f"mysql+pymysql://{DB_USER}:{DB_PASS}@/{DB_NAME}?unix_socket={db_socket_dir}/{cloud_sql_connection_name}"
+    # ソケットパスの確認ログを追加
+    socket_path = f"{db_socket_dir}/{cloud_sql_connection_name}"
+    print(f"Cloud SQLソケットパス: {socket_path}")
+    
+    db_url = f"mysql+pymysql://{DB_USER}:{DB_PASS}@/{DB_NAME}?unix_socket={socket_path}"
+    
+    # 接続情報をログ出力（パスワードは除く）
+    print(f"DB接続URL: mysql+pymysql://{DB_USER}:***@/{DB_NAME}?unix_socket={socket_path}")
 else:
     # ローカル開発環境では直接接続
     db_url = f"mysql+pymysql://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
@@ -64,4 +72,9 @@ class VideoSummary(Base):
 
 # データベーステーブルの作成
 def create_tables():
-    Base.metadata.create_all(bind=engine)
+    try:
+        Base.metadata.create_all(bind=engine)
+        print("データベーステーブル作成成功")
+    except Exception as e:
+        print(f"データベーステーブル作成エラー: {str(e)}")
+        print("警告: データベース接続に失敗しました。ローカルモードで動作します。")

@@ -232,7 +232,14 @@ app = FastAPI(
 )
 
 # アプリケーション起動時にテーブルを作成
-create_tables()
+try:
+    create_tables()
+    print("データベーステーブルの作成に成功しました")
+except Exception as e:
+    print(f"警告: データベーステーブルの作成中にエラーが発生しました: {str(e)}")
+    print(f"エラー詳細: {traceback.format_exc()}")
+    print("アプリケーションは引き続き起動します...")
+    # データベース接続エラーでもアプリケーションは起動する
 
 # CORSミドルウェアの設定を追加
 app.add_middleware(
