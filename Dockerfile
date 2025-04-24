@@ -20,11 +20,14 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
+# インストールされたパッケージの一覧をビルドログに出力
+RUN pip list
+
 # アプリケーションコードのコピー
 COPY . .
 
 # ポートの公開
 EXPOSE 8000
 
-# モジュールバージョンの確認とアプリケーションの実行
-CMD ["sh", "-c", "pip list && python main.py"]
+# アプリケーションの実行
+CMD ["python", "main.py"]
