@@ -26,5 +26,5 @@ COPY . .
 # ポートの公開
 EXPOSE 8000
 
-# アプリケーションの実行
-CMD ["python", "main.py"]
+# モジュールバージョンの確認とアプリケーションの実行
+CMD ["sh", "-c", "pip list && python main.py"]
