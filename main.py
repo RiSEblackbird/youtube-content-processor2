@@ -21,6 +21,8 @@ from google.cloud import storage
 from google.api_core import exceptions as google_exceptions
 from database.db_models import create_tables
 from database.db_service import DatabaseService
+import logging
+from logging.handlers import RotatingFileHandler
 
 # .envファイルの読み込み
 load_dotenv()
@@ -37,9 +39,59 @@ YOUTUBE_URL_PREFIX = "https://www.youtube.com/watch?v="
 GCS_BUCKET_NAME = os.getenv('GCS_BUCKET_NAME')
 GCS_SUMMARY_PREFIX = "summaries/"  # GCSのフォルダプレフィックス
 
-def get_exception_trace() -> str:
-    '''例外のトレースバックを取得'''
-    return traceback.format_exc()
+# ロギング設定
+def setup_logger():
+    log_level = os.getenv('LOG_LEVEL', 'INFO')
+    log_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    
+    logger = logging.getLogger()
+    logger.setLevel(getattr(logging, log_level))
+    
+    formatter = logging.Formatter(log_format)
+    
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(formatter)
+    logger.addHandler(console_handler)
+    
+    log_file = os.getenv('LOG_FILE')
+    if log_file:
+        file_handler = RotatingFileHandler(
+            log_file, maxBytes=10*1024*1024, backupCount=5
+        )
+        file_handler.setFormatter(formatter)
+        logger.addHandler(file_handler)
+    
+    return logger
+
+# ロガーのセットアップ
+logger = setup_logger()
+
+def log_structured_error(error_type, message, exception=None, **kwargs):
+    error_data = {
+        "error_type": error_type,
+        "message": message,
+        **kwargs
+    }
+    
+    if exception:
+        error_data["exception"] = str(exception)
+        error_data["traceback"] = traceback.format_exc()
+    
+    logger.error(f"エラー発生: {json.dumps(error_data, ensure_ascii=False, indent=2)}")
+
+def get_exception_trace(e=None):
+    exc_type, exc_value, exc_traceback = sys.exc_info()
+    
+    if e is None:
+        e = exc_value
+    
+    trace_info = {
+        "exception_type": exc_type.__name__ if exc_type else "Unknown",
+        "exception_message": str(e),
+        "traceback": traceback.format_exc()
+    }
+    
+    return trace_info
 
 
 class TranscriptRequest(BaseModel):
@@ -265,21 +317,35 @@ async def root():
 
 @app.post("/transcript/", response_model=TranscriptResponse)
 async def get_video_transcript(request: TranscriptRequest):
-    '''
-    概要: 動画の文字起こしを取得するエンドポイント \n
-    用途: 指定されたビデオIDの文字起こしを返す
-    '''
-    video_id = request.video_id
-    transcript = YouTubeTranscriptService.get_transcript(video_id)
-    video_info = YouTubeTranscriptService.get_video_info(video_id)
-    return TranscriptResponse(
-        video_id=video_id,
-        transcript=transcript,
-        title=video_info["title"],
-        description=video_info["description"],
-        channelTitle=video_info["channelTitle"],
-        channelId=video_info["channelId"]
-    )
+    try:
+        video_id = request.video_id
+        logger.info(f"文字起こしリクエストを受信: video_id={video_id}")
+        transcript = YouTubeTranscriptService.get_transcript(video_id)
+        video_info = YouTubeTranscriptService.get_video_info(video_id)
+        return TranscriptResponse(
+            video_id=video_id,
+            transcript=transcript,
+            title=video_info["title"],
+            description=video_info["description"],
+            channelTitle=video_info["channelTitle"],
+            channelId=video_info["channelId"]
+        )
+    except HTTPException as he:
+        log_structured_error(
+            "transcript_error",
+            he.detail,
+            status_code=he.status_code,
+            video_id=video_id
+        )
+        raise
+    except Exception as e:
+        log_structured_error(
+            "unexpected_transcript_error",
+            "予期せぬエラーが発生しました",
+            exception=e,
+            video_id=video_id
+        )
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/summarize/", response_model=SummaryResponse)
@@ -287,13 +353,14 @@ async def get_video_summary(request: TranscriptRequest):
     """動画の文字起こしを要約するエンドポイント"""
     try:
         video_id = request.video_id
+        logger.info(f"要約リクエストを受信: video_id={video_id}")
         transcript = YouTubeTranscriptService.get_transcript(video_id)
         video_info = YouTubeTranscriptService.get_video_info(video_id)
         
         # 既存の要約データをDBから検索（キャッシュとして使用）
         existing_summary = DatabaseService.get_summary_by_video_id(video_id)
         if existing_summary:
-            print(f"既存の要約データを使用: video_id={video_id}")
+            logger.info(f"キャッシュされた要約を返却: video_id={video_id}")
             return SummaryResponse(
                 video_id=video_id, 
                 summary=json.dumps(existing_summary.summary_data),
@@ -339,15 +406,27 @@ async def get_video_summary(request: TranscriptRequest):
                 gcs_path=gcs_path
             )
         except json.JSONDecodeError as je:
+            log_structured_error(
+                "json_parse_error",
+                "要約のJSON解析に失敗しました",
+                exception=je,
+                video_id=video_id,
+                error_position=je.pos,
+                raw_data=final_result['summary'][:200]
+            )
             raise HTTPException(
                 status_code=500, 
                 detail=f"要約のJSON解析に失敗しました。エラー位置: {je.pos}, 原因: {je.msg}\n生データ: {final_result['summary'][:200]}..."
             )
             
     except Exception as e:
-        error_trace = traceback.format_exc()
-        print(f"要約生成エラー: {str(e)}\nトレース:\n{error_trace}", file=sys.stderr)
-        raise HTTPException(status_code=500, detail=f"要約の生成中にエラーが発生しました: {str(e)}\n\n詳細:\n{error_trace}")
+        log_structured_error(
+            "summary_generation_error",
+            "要約の生成中にエラーが発生",
+            exception=e,
+            video_id=video_id
+        )
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/chat/", response_model=Dict[str, str])
@@ -358,7 +437,16 @@ async def process_chat(request: Dict[str, Any]):
         chat_type = request.get("type", "transcript")
         content_text = request.get("contentText", "")
         
+        logger.info(f"チャットリクエストを受信: type={chat_type}")
+        
         if not content or not content_text:
+            log_structured_error(
+                "chat_validation_error",
+                "必要なパラメータが不足しています",
+                chat_type=chat_type,
+                content_length=len(content) if content else 0,
+                content_text_length=len(content_text) if content_text else 0
+            )
             raise ValueError("必要なパラメータが不足しています")
 
         llm = ChatOpenAI(model="gpt-4.1-nano", temperature=0)
@@ -383,11 +471,15 @@ async def process_chat(request: Dict[str, Any]):
 # メインプロセス
 if __name__ == "__main__":
     try:
-        # APIサーバーを起動
+        logger.info("APIサーバーを起動します...")
         uvicorn.run(app, host=DEFAULT_HOST, port=DEFAULT_PORT)
     except Exception as e:
-        error_trace = get_exception_trace()
-        print("エラーが発生しました:")
-        for line in error_trace.splitlines():
-            print(line)
+        error_info = get_exception_trace(e)
+        log_structured_error(
+            "server_startup_error",
+            "サーバー起動中にエラーが発生しました",
+            exception=e,
+            host=DEFAULT_HOST,
+            port=DEFAULT_PORT
+        )
         sys.exit(1)
