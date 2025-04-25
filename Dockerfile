@@ -12,6 +12,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
+# slimに無いものをインストール
+RUN pip install --no-cache-dir setuptools
+
 # 環境変数の設定
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1
