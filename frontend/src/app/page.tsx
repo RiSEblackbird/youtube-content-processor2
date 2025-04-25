@@ -5,7 +5,7 @@ import { useState } from 'react';
 export default function Home() {
   const [videoUrl, setVideoUrl] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [transcript, setTranscript] = useState([]);
+  const [transcript, setTranscript] = useState<any[]>([]);
   const [summary, setSummary] = useState('');
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [error, setError] = useState('');
@@ -18,11 +18,11 @@ export default function Home() {
   // チャット関連の状態
   const [chatType, setChatType] = useState('transcript');
   const [chatMessage, setChatMessage] = useState('');
-  const [transcriptChatMessages, setTranscriptChatMessages] = useState([]);
-  const [summaryChatMessages, setSummaryChatMessages] = useState([]);
+  const [transcriptChatMessages, setTranscriptChatMessages] = useState<any[]>([]);
+  const [summaryChatMessages, setSummaryChatMessages] = useState<any[]>([]);
   const [isChatLoading, setIsChatLoading] = useState(false);
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setTranscript([]);
     setSummary(''); // 要約をリセット
