@@ -216,12 +216,46 @@ class YouTubeTranscriptService:
         return url_or_id
 
     @staticmethod
+    def test_youtube_transcript_api_connectivity():
+        try:
+            # YouTubeの一般的なエンドポイントにテストリクエストを送信
+            test_url = "https://www.youtube.com/youtubei/v1/player"
+            headers = {
+                "User-Agent": "Mozilla/5.0 (compatible; YouTubeTranscriptApiTest/1.0)"
+            }
+            logger.info(f"YouTubeエンドポイント {test_url} に接続を試みます...")
+            
+            # シンプルなGETリクエストで接続性を確認
+            response = requests.get(test_url, headers=headers, timeout=5)
+            
+            # レスポンスコードを確認
+            if response.status_code in (200, 400, 403):
+                # 400/403でもサーバーに到達しているため、通信は成功
+                logger.info("YouTubeサーバーとの通信に成功しました！")
+                logger.info(f"レスポンスコード: {response.status_code}")
+                return True
+            else:
+                logger.error(f"YouTubeサーバーとの通信に失敗しました。ステータスコード: {response.status_code}")
+                return False
+
+        except Exception as e:
+            # エラー詳細をログ出力
+            logger.error("YouTubeサーバーとの通信に失敗しました。")
+            logger.error(f"エラー内容: {str(e)}")
+            logger.error(f"エラータイプ: {type(e).__name__}")
+            return False
+
+    @staticmethod
     def get_transcript(video_id: str) -> List[Dict[str, Any]]:
         '''
         概要: YouTube動画の文字起こしを取得 \n
         用途: 指定されたビデオIDの文字起こしをリストとして返す
         '''
         try:
+            # 接続性テストを実行
+            if not YouTubeTranscriptService.test_youtube_transcript_api_connectivity():
+                raise HTTPException(status_code=503, detail="YouTubeサーバーとの通信に失敗しました")
+
             logger.info(f"文字起こし取得開始: video_id={video_id}")
             video_id = YouTubeTranscriptService.extract_video_id(video_id)
             logger.info(f"抽出されたビデオID: {video_id}")
