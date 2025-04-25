@@ -298,7 +298,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",  # ローカル開発環境用
-        "https://youtube-content-processor2-frontend-667890125929.asia-northeast1.run.app"  # 本番環境用
+        "https://youtube-content-processor2-frontend-667890125929.asia-northeast1.run.app",  # 本番環境用
+        "*"  # すべてのオリジンを一時的に許可（テスト用）
     ],
     allow_credentials=True,
     allow_methods=["*"],
