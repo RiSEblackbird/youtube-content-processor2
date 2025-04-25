@@ -244,7 +244,10 @@ except Exception as e:
 # CORSミドルウェアの設定を追加
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=[
+        "http://localhost:3000",  # ローカル開発環境用
+        "https://youtube-content-processor2-frontend-667890125929.asia-northeast1.run.app"  # 本番環境用
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
