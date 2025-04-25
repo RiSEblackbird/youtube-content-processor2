@@ -222,14 +222,70 @@ class YouTubeTranscriptService:
         用途: 指定されたビデオIDの文字起こしをリストとして返す
         '''
         try:
+            logger.info(f"文字起こし取得開始: video_id={video_id}")
             video_id = YouTubeTranscriptService.extract_video_id(video_id)
+            logger.info(f"抽出されたビデオID: {video_id}")
+            
+            # APIキーの状態を確認
+            api_key = os.getenv('YouTube_API_KEY')
+            logger.info(f"YouTube APIキー状態: {'設定済み' if api_key else '未設定'}")
+            
+            # 詳細なデバッグ情報
+            try:
+                # YouTubeTranscriptApiのデバッグモードを有効化
+                from youtube_transcript_api import YouTubeTranscriptApi, _errors
+                logger.debug(f"YouTubeTranscriptApi バージョン: {_errors.__version__ if hasattr(_errors, '__version__') else '不明'}")
+                
+                # 利用可能な言語リストを確認
+                try:
+                    transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+                    available_languages = [t.language_code for t in transcript_list]
+                    logger.info(f"利用可能な言語: {available_languages}")
+                except Exception as lang_err:
+                    logger.warning(f"言語リスト取得エラー: {str(lang_err)}")
+            except Exception as debug_err:
+                logger.warning(f"デバッグ情報取得中のエラー: {str(debug_err)}")
+            
+            # 実際の文字起こし取得処理
+            logger.info(f"文字起こし取得試行: video_id={video_id}, 言語=['ja', 'en']")
             transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=['ja', 'en'])
+            
+            # 成功時の情報
+            logger.info(f"文字起こし取得成功: video_id={video_id}, エントリ数={len(transcript)}")
             return transcript
-        except NoTranscriptAvailable:
+            
+        except NoTranscriptAvailable as e:
+            error_trace = traceback.format_exc()
+            log_structured_error(
+                "transcript_not_available",
+                "指定された言語の文字起こしが利用できません",
+                exception=e,
+                video_id=video_id,
+                traceback=error_trace
+            )
             raise HTTPException(status_code=404, detail="指定された言語の文字起こしが利用できません")
-        except TranscriptsDisabled:
+            
+        except TranscriptsDisabled as e:
+            error_trace = traceback.format_exc()
+            log_structured_error(
+                "transcripts_disabled",
+                "この動画では文字起こしが無効になっています",
+                exception=e,
+                video_id=video_id,
+                traceback=error_trace
+            )
             raise HTTPException(status_code=404, detail="この動画では文字起こしが無効になっています")
+            
         except Exception as e:
+            error_trace = traceback.format_exc()
+            log_structured_error(
+                "transcript_fetch_error",
+                f"文字起こしの取得中にエラーが発生しました: {str(e)}",
+                exception=e,
+                video_id=video_id,
+                traceback=error_trace,
+                exception_type=type(e).__name__
+            )
             raise HTTPException(status_code=500, detail=f"文字起こしの取得中にエラーが発生しました: {str(e)}")
 
     @staticmethod
@@ -239,40 +295,82 @@ class YouTubeTranscriptService:
         用途: 指定されたビデオIDのタイトルと説明を取得する
         '''
         try:
+            logger.info(f"ビデオ情報取得開始: video_id={video_id}")
             video_id = YouTubeTranscriptService.extract_video_id(video_id)
             
-            if not os.getenv('YouTube_API_KEY'):
-                print("YouTube APIキーが設定されていません")
+            api_key = os.getenv('YouTube_API_KEY')
+            if not api_key:
+                logger.warning("YouTube APIキーが設定されていません")
                 return {"title": "", "description": "", "channelTitle": "", "channelId": ""}
 
-            youtube = build('youtube', 'v3', developerKey=os.getenv('YouTube_API_KEY'))
+            logger.info(f"YouTube API 接続試行: video_id={video_id}")
+            youtube = build('youtube', 'v3', developerKey=api_key)
+            
+            logger.debug(f"YouTube APIリクエスト準備: part=snippet, id={video_id}")
             request = youtube.videos().list(
                 part='snippet',
                 id=video_id
             )
+            
+            logger.info(f"YouTube API実行: {request.uri}")
             response = request.execute()
+            logger.debug(f"YouTube APIレスポンス: status=success, items_count={len(response.get('items', []))}")
 
             if not response.get('items'):
-                print(f"ビデオが見つかりません: {video_id}")
+                logger.warning(f"ビデオが見つかりません: {video_id}")
                 return {"title": "", "description": "", "channelTitle": "", "channelId": ""}
 
             snippet = response['items'][0]['snippet']
+            logger.info(f"ビデオ情報取得成功: title='{snippet['title'][:30]}...', channel='{snippet['channelTitle']}'")
             return {
                 "title": snippet['title'],
                 "description": snippet['description'],
                 "channelTitle": snippet['channelTitle'],
                 "channelId": snippet['channelId']
             }
+            
         except HttpError as e:
+            error_trace = traceback.format_exc()
+            status_code = e.resp.status
+            reason = e.reason
+            
             error_message = "YouTube APIエラー: "
-            if e.status_code == 403:
+            if status_code == 403:
                 error_message += "APIキーの権限が不足しています。"
+            elif status_code == 400:
+                error_message += "リクエストが不正です。"
+            elif status_code == 404:
+                error_message += "指定されたリソースが見つかりません。"
+            elif status_code == 429:
+                error_message += "APIリクエスト制限を超過しました。"
             else:
-                error_message += f"{e.reason}"
-            print(error_message)
+                error_message += f"{reason}"
+                
+            log_structured_error(
+                "youtube_api_error",
+                error_message,
+                exception=e,
+                video_id=video_id,
+                traceback=error_trace,
+                status_code=status_code,
+                reason=reason
+            )
+            
+            logger.error(error_message)
             return {"title": "", "description": "", "channelTitle": "", "channelId": ""}
+            
         except Exception as e:
-            print(f"ビデオ情報の取得中にエラーが発生しました: {str(e)}")
+            error_trace = traceback.format_exc()
+            log_structured_error(
+                "video_info_fetch_error",
+                f"ビデオ情報の取得中にエラーが発生しました: {str(e)}",
+                exception=e,
+                video_id=video_id,
+                traceback=error_trace,
+                exception_type=type(e).__name__
+            )
+            
+            logger.error(f"ビデオ情報の取得中にエラーが発生しました: {str(e)}")
             return {"title": "", "description": "", "channelTitle": "", "channelId": ""}
 
 
@@ -298,8 +396,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",  # ローカル開発環境用
-        "https://youtube-content-processor2-frontend-667890125929.asia-northeast1.run.app",  # 本番環境用
-        "*"  # すべてのオリジンを一時的に許可（テスト用）
+        "https://youtube-content-processor2-frontend-667890125929.asia-northeast1.run.app"  # 本番環境用
     ],
     allow_credentials=True,
     allow_methods=["*"],

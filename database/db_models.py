@@ -33,6 +33,7 @@ if os.getenv("K_SERVICE") or os.getenv("GAE_ENV", "").startswith("standard"):
 else:
     # ローカル開発環境では直接接続
     db_url = f"mysql+pymysql://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    print(f"DB接続URL: mysql+pymysql://{DB_USER}:***@{DB_HOST}:{DB_PORT}/{DB_NAME}")
 
 # データベースエンジンの作成
 engine = create_engine(
@@ -72,9 +73,5 @@ class VideoSummary(Base):
 
 # データベーステーブルの作成
 def create_tables():
-    try:
-        Base.metadata.create_all(bind=engine)
-        print("データベーステーブル作成成功")
-    except Exception as e:
-        print(f"データベーステーブル作成エラー: {str(e)}")
-        print("警告: データベース接続に失敗しました。ローカルモードで動作します。")
+    Base.metadata.create_all(bind=engine)
+    print("データベーステーブル作成成功")
