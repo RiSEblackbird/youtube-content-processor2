@@ -48,7 +48,7 @@ export default function Home() {
         ? videoUrl.split('v=')[1].split('&')[0]
         : videoUrl;
 
-        const response = await fetch(`${backendUrl}/transcript`, {
+        const response = await fetch(`${backendUrl}/transcript/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -83,7 +83,7 @@ export default function Home() {
         ? videoUrl.split('v=')[1].split('&')[0]
         : videoUrl;
 
-        const response = await fetch(`${backendUrl}/summarize`, {
+        const response = await fetch(`${backendUrl}/summarize/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -124,7 +124,7 @@ export default function Home() {
         ? transcript.map(item => item.text).join(' ')
         : summary;
 
-        const response = await fetch(`${backendUrl}/chat`, {
+        const response = await fetch(`${backendUrl}/chat/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
