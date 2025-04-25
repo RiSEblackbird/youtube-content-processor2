@@ -244,6 +244,19 @@ class YouTubeTranscriptService:
         用途: 指定されたビデオIDの文字起こしをリストとして返す
         '''
         try:
+            # 環境情報のログ出力
+            import platform
+            import sys
+            import pkg_resources
+            
+            try:
+                yt_api_version = pkg_resources.get_distribution("youtube_transcript_api").version
+            except:
+                yt_api_version = "不明"
+            
+            logger.info(f"環境情報: Python={sys.version}, OS={platform.platform()}")
+            logger.info(f"ライブラリバージョン: youtube_transcript_api={yt_api_version}")
+        
             # 接続性テストを実行
             if not YouTubeTranscriptService.test_youtube_transcript_api_connectivity():
                 # raise HTTPException(status_code=503, detail="YouTubeサーバーとの通信に失敗しました")
