@@ -3,6 +3,7 @@ import traceback
 import uvicorn
 import json
 import uuid
+import requests
 from datetime import datetime
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -218,25 +219,16 @@ class YouTubeTranscriptService:
     @staticmethod
     def test_youtube_transcript_api_connectivity():
         try:
-            # YouTubeの一般的なエンドポイントにテストリクエストを送信
-            test_url = "https://www.youtube.com/youtubei/v1/player"
-            headers = {
-                "User-Agent": "Mozilla/5.0 (compatible; YouTubeTranscriptApiTest/1.0)"
-            }
-            logger.info(f"YouTubeエンドポイント {test_url} に接続を試みます...")
+            # テスト用の一般的な動画IDを使用
+            test_video_id = "dQw4w9WgXcQ"  # よく知られたYouTube動画ID
             
-            # シンプルなGETリクエストで接続性を確認
-            response = requests.get(test_url, headers=headers, timeout=5)
+            logger.info("YouTubeTranscriptApiの接続テストを実行中...")
             
-            # レスポンスコードを確認
-            if response.status_code in (200, 400, 403):
-                # 400/403でもサーバーに到達しているため、通信は成功
-                logger.info("YouTubeサーバーとの通信に成功しました！")
-                logger.info(f"レスポンスコード: {response.status_code}")
-                return True
-            else:
-                logger.error(f"YouTubeサーバーとの通信に失敗しました。ステータスコード: {response.status_code}")
-                return False
+            # 実際のAPIメソッドを使用してテスト
+            transcript_list = YouTubeTranscriptApi.list_transcripts(test_video_id)
+            
+            logger.info("YouTubeサーバーとの通信に成功しました！")
+            return True
 
         except Exception as e:
             # エラー詳細をログ出力
@@ -254,7 +246,8 @@ class YouTubeTranscriptService:
         try:
             # 接続性テストを実行
             if not YouTubeTranscriptService.test_youtube_transcript_api_connectivity():
-                raise HTTPException(status_code=503, detail="YouTubeサーバーとの通信に失敗しました")
+                # raise HTTPException(status_code=503, detail="YouTubeサーバーとの通信に失敗しました")
+                logger.info("YouTubeサーバーとの通信に失敗しました")
 
             logger.info(f"文字起こし取得開始: video_id={video_id}")
             video_id = YouTubeTranscriptService.extract_video_id(video_id)
