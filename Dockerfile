@@ -42,14 +42,18 @@ exit 0' > /app/healthcheck.sh && chmod +x /app/healthcheck.sh
 
 # 起動スクリプトを作成
 RUN echo '#!/bin/bash\n\
-echo "Starting application..."\n\
-echo "Environment: $K_SERVICE"\n\
-echo "Cloud SQL Connection: $INSTANCE_CONNECTION_NAME"\n\
-echo "DB Host: $DB_HOST"\n\
-echo "DB Port: $DB_PORT"\n\
-echo "DB User: $DB_USER"\n\
-# データベース接続エラーがあってもアプリケーションを起動する\n\
-python main.py' > /app/start.sh && chmod +x /app/start.sh
+# 標準出力へ明示的にリダイレクト\n\
+echo "Starting application..." > /dev/stdout 2>&1\n\
+echo "Environment: $K_SERVICE" > /dev/stdout 2>&1\n\
+echo "Cloud SQL Connection: $INSTANCE_CONNECTION_NAME" > /dev/stdout 2>&1\n\
+echo "DB Host: $DB_HOST" > /dev/stdout 2>&1\n\
+echo "DB Port: $DB_PORT" > /dev/stdout 2>&1\n\
+echo "DB User: $DB_USER" > /dev/stdout 2>&1\n\
+echo "Listening on port: $PORT" > /dev/stdout 2>&1\n\
+\n\
+# Cloud Run環境で指定されたポートを使用\n\
+exec python -m uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000} --log-level info\n\
+' > /app/start.sh && chmod +x /app/start.sh
 
 # アプリケーションの実行
 CMD ["/app/start.sh"]
