@@ -109,7 +109,7 @@ export default function Home() {
   const handleSendMessage = async () => {
     if (!chatMessage.trim() || isChatLoading) return;
 
-    const newMessage = { type: 'user', content: chatMessage };
+    const newMessage: ChatMessage = { type: 'user' as const, content: chatMessage };
     if (chatType === 'transcript') {
       setTranscriptChatMessages(prev => [...prev, newMessage]);
     } else {
@@ -141,7 +141,7 @@ export default function Home() {
       }
 
       const data = await response.json();
-      const aiMessage = { type: 'ai', content: data.response };
+      const aiMessage: ChatMessage = { type: 'ai' as const, content: data.response };
       if (chatType === 'transcript') {
         setTranscriptChatMessages(prev => [...prev, aiMessage]);
       } else {
