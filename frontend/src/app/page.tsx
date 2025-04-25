@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import Image from "next/image";
 
 export default function Home() {
   const [videoUrl, setVideoUrl] = useState('');
@@ -329,7 +328,7 @@ export default function Home() {
                               </div>
                             </>
                           );
-                        } catch (e) {
+                        } catch {
                           return <p className="text-red-500">要約データの解析に失敗しました。</p>;
                         }
                       })()}
