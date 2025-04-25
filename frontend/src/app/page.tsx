@@ -155,10 +155,10 @@ export default function Home() {
   };
 
   // 文字起こしを表示形式に変換
-  const formatTranscript = (transcriptItems) => {
+  const formatTranscript = (transcriptItems: TranscriptItem[]) => {
     return transcriptItems.map((item, index) => {
       // 時間をフォーマット（秒から分:秒に変換）
-      const formatTime = (seconds) => {
+      const formatTime = (seconds: number) => {
         const minutes = Math.floor(seconds / 60);
         const secs = Math.floor(seconds % 60);
         return `${minutes}:${secs.toString().padStart(2, '0')}`;
