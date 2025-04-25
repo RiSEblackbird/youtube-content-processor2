@@ -2,10 +2,20 @@
 
 import { useState } from 'react';
 
+interface TranscriptItem {
+  start: number;
+  text: string;
+}
+
+interface ChatMessage {
+  type: 'user' | 'ai';
+  content: string;
+}
+
 export default function Home() {
   const [videoUrl, setVideoUrl] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [transcript, setTranscript] = useState<any[]>([]);
+  const [transcript, setTranscript] = useState<TranscriptItem[]>([]);
   const [summary, setSummary] = useState('');
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [error, setError] = useState('');
@@ -18,8 +28,8 @@ export default function Home() {
   // チャット関連の状態
   const [chatType, setChatType] = useState('transcript');
   const [chatMessage, setChatMessage] = useState('');
-  const [transcriptChatMessages, setTranscriptChatMessages] = useState<any[]>([]);
-  const [summaryChatMessages, setSummaryChatMessages] = useState<any[]>([]);
+  const [transcriptChatMessages, setTranscriptChatMessages] = useState<ChatMessage[]>([]);
+  const [summaryChatMessages, setSummaryChatMessages] = useState<ChatMessage[]>([]);
   const [isChatLoading, setIsChatLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
