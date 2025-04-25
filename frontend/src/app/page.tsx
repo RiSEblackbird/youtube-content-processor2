@@ -308,15 +308,15 @@ export default function Home() {
                               <div>
                                 <h3 className="text-md font-medium">主要トピック</h3>
                                 <ul className="list-disc list-inside text-gray-600">
-                                  {summaryData.main_topics.map((topic, index) => (
+                                    {summaryData.main_topics.map((topic: string, index: number) => (
                                     <li key={index}>{topic}</li>
-                                  ))}
+                                    ))}
                                 </ul>
                               </div>
                               <div>
                                 <h3 className="text-md font-medium">重要ポイント</h3>
                                 <div className="space-y-2">
-                                  {summaryData.key_points.map((point, index) => (
+                                  {summaryData.key_points.map((point: { title: string; description: string }, index: number) => (
                                     <div key={index}>
                                       <p className="font-medium text-gray-700">{point.title}</p>
                                       <p className="text-gray-600">{point.description}</p>
@@ -331,7 +331,7 @@ export default function Home() {
                               <div>
                                 <h3 className="text-md font-medium">アクションアイテム</h3>
                                 <ul className="list-disc list-inside text-gray-600">
-                                  {summaryData.action_items.map((item, index) => (
+                                  {summaryData.action_items.map((item: string, index: number) => (
                                     <li key={index}>{item}</li>
                                   ))}
                                 </ul>
