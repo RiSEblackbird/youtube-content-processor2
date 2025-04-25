@@ -13,6 +13,7 @@ interface ChatMessage {
 }
 
 export default function Home() {
+  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://youtube-content-processor2-backend-667890125929.asia-northeast1.run.app';
   const [videoUrl, setVideoUrl] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [transcript, setTranscript] = useState<TranscriptItem[]>([]);
@@ -47,7 +48,7 @@ export default function Home() {
         ? videoUrl.split('v=')[1].split('&')[0]
         : videoUrl;
 
-      const response = await fetch('http://127.0.0.1:8000/transcript/', {
+        const response = await fetch(`${backendUrl}/transcript/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -82,7 +83,7 @@ export default function Home() {
         ? videoUrl.split('v=')[1].split('&')[0]
         : videoUrl;
 
-      const response = await fetch('http://127.0.0.1:8000/summarize/', {
+        const response = await fetch(`${backendUrl}/summarize/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -123,7 +124,7 @@ export default function Home() {
         ? transcript.map(item => item.text).join(' ')
         : summary;
 
-      const response = await fetch('http://127.0.0.1:8000/chat/', {
+        const response = await fetch(`${backendUrl}/chat/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
