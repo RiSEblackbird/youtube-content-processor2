@@ -20,9 +20,12 @@ ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1
 
 # 依存関係ファイルのコピーと必要なパッケージのインストール
+# (最新のMySQLはデフォルトでcaching_sha2_password認証を使用しており、これにはcryptographyパッケージが必要
+# # memo: ローカルでの問題なので理想はDockerfile分けた方がいいかも)
 COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+    pip install --no-cache-dir -r requirements.txt && \
+    pip install --no-cache-dir cryptography
 
 # インストールされたパッケージの一覧をビルドログに出力
 RUN pip list
